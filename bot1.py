@@ -6,12 +6,43 @@ import generateJSON
 import json
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
-import matplotlib.pyplot as plt
 import networkx as nx
 from haversine import haversine, Unit
 
 
-from fuzzywuzzy import fuzz
+#from fuzzywuzzy import fuzz
+
+class Tree(object):
+    def __init__(self, name='root',children=None):
+        self.name = name
+        self.children = []
+        if children is not None:
+            for child in children:
+                self.add_child(child)
+    def __repr__(self):
+        return self.name
+    def add_child(self, node):
+        assert isinstance(node, Tree)
+        self.children.append(node)
+    def print(self):
+        print(self.name,end=' ')
+        for child in self.children:
+            child.print()
+
+
+
+def treeTest():
+    t = Tree('*', [Tree('1'),
+               Tree('2'),
+               Tree('+', [Tree('3'),
+                          Tree('4')])])
+    t.print()
+    #kde-tree
+    with open('worldcitiespop.json', 'r', encoding="utf8") as json_file:
+        jfile = json.load(json_file)
+
+
+
 
 # defineix una funció que saluda i que s'executarà quan el bot rebi el missatge /start
 def start(bot, update):
@@ -64,14 +95,14 @@ def graphTest(file,bot,update,args):
         bot.send_message(chat_id=update.message.chat_id, text="Dibuixant graf")
         nx.draw(G, with_labels=True,font_weight='bold')
         bot.send_message(chat_id=update.message.chat_id, text="Graf dibuixat")
-        plt.show()
     except Exception as e:
         print(e)
 
 
 if __name__=="__main__":
     #main()
-    generateJSON.processFile('worldcitiespop')
+    treeTest()
+    #generateJSON.processFile('worldcitiespop')
     #jsonTesting()
     #jsonTesting()
 
