@@ -12,7 +12,8 @@ def processFile(path):
 	print("Generating JSON")
 	i = 0
 	#jsonfile.write('{ "data": [ \n')
-	countryDict = {}
+	#countryDict = {}
+	countryDict = []
 	for row in reader:
 		if row['Population'] != "":
 			t = row
@@ -20,11 +21,12 @@ def processFile(path):
 			t.pop('Country', None)
 			t.pop('AccentCity')
 			t.pop('Region')
-			if city in countryDict:
+			'''if city in countryDict:
 				countryDict[city].append(t)
 			else:
 				countryDict[city] = []
-				countryDict[city].append(t)
+				countryDict[city].append(t)'''
+			countryDict.append(t)
 
 
 
