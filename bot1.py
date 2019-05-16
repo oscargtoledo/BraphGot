@@ -45,7 +45,8 @@ class Node(namedtuple('Node', 'city population location latlon left_child right_
     def print(self):
         print(self.city + " " + self.population)
 
-
+appGraph = None
+nodeTree = None
 
 earthRadius = 6371000
 def kdtree(point_list, depth=0):
@@ -141,21 +142,27 @@ def treeTest():
         jfile = json.load(json_file)
         #print(sorted(jfile,key=lambda x: float(x['Latitude'])))
         G = nx.Graph()
+        m = StaticMap(2000, 2000, url_template='http://a.tile.osm.org/{z}/{x}/{y}.png')
 
         for city in jfile:
             if(float(city['Population'])>=3000):
                 jfile.remove(city)
-            else: G.add_node(city['City'])
+            else: 
+                G.add_node(city['City'])
+                latlon = (float(city['Latitude']),float(city['Longitude']))
+                m.add_marker(CircleMarker((latlon[1],latlon[0]),'#0036FF',6))
+                #tree = kdtree(jfile)
+                image = m.render(zoom=5)
+                image.save('map.png')
+
         
-        tree = kdtree(jfile)
         
-        for city in jfile:
+        '''for city in jfile:
             cityPosition = (math.cos(float(city['Latitude'])) * math.cos(float(city['Longitude'])),math.cos(float(city['Latitude'])) * math.sin(float(city['Longitude'])) , math.sin(float(city['Latitude'])) )
-            latLon = (float(jfile[0]['Latitude']),float(jfile[0]['Longitude']))
             closeByNodes = closeNodes(tree,cityPosition,latLon,200)
             for closeCity in closeNodes:
 
-
+'''
 
 
 
@@ -177,8 +184,44 @@ def treeTest():
 
         image = m.render(zoom=5)
         image.save('map.png')'''
+def latLonToCoord(latlon):
+    x = math.cos(float(latlon[0])) * math.cos(float(latlon[1]))
+    y = math.cos(float(latlon[0])) * math.sin(float(latlon[1]))
+    z = math.sin(float(latlon[0]))
+    return (x,y,z)
+
+#citiesJson = None
+def initGraph(bot, update, args):
+    with open('worldcitiespop.json', 'r', encoding="utf8") as json_file:
+        appGraph = StaticMap(3000,3000,url_template='http://a.tile.osm.org/{z}/{x}/{y}.png')
+        #print(sorted(jfile,key=lambda x: float(x['Latitude'])))
+        jfile = json.load(json_file)
+        #appGraph = nx.Graph()
+
+        for city in jfile:
+            print(city['City'])
+            if(float(city['Population'])>=args[1]):
+                jfile.remove(city)
+            else: 
+                #appGraph.add_node(city['City'])
+                latlon = (float(city['Latitude']),float(city['Longitude']))
+                appGraph.add_marker(CircleMarker((latlon[1],latlon[0]),'#0036FF',6))
+                #tree = kdtree(jfile)
+        image = appGraph.render(zoom=5)
+        image.save('map.png')
+        nodeTree = kdtree(jfile)
+
+def plotPop(bot, update, args):
+    if(args[2] != None):
+        queryPos = (args[1],args[2])
+        closeCities = closeNodes(nodeTree,latLonToCoord(queryPos),queryPos,args[0])
+        for city in closeCities:
+            popMap = appGraph
 
 
+    else:
+        pass
+        #query user position
 
 # defineix una funció que saluda i que s'executarà quan el bot rebi el missatge /start
 def start(bot, update):
@@ -195,6 +238,8 @@ def main():
     # indica que quan el bot rebi la comanda /start s'executi la funció start
     dispatcher.add_handler(CommandHandler('start', start))
     dispatcher.add_handler(CommandHandler('gt', jsonTesting, pass_args=True))
+    dispatcher.add_handler(CommandHandler('graph', initGraph, pass_args=True))
+    dispatcher.add_handler(CommandHandler('plotpop', plotPop, pass_args=True))
 
 
     # engega el bot
@@ -238,7 +283,8 @@ def graphTest(file,bot,update,args):
 if __name__=="__main__":
     #main()
     #generateJSON.processFile('worldcitiespop')
-    treeTest()
+    #treeTest()
+    initGraph(None,None,[300,1000])
     #jsonTesting()
     #jsonTesting()
 
