@@ -140,14 +140,22 @@ def treeTest():
     with open('worldcitiespop.json', 'r', encoding="utf8") as json_file:
         jfile = json.load(json_file)
         #print(sorted(jfile,key=lambda x: float(x['Latitude'])))
+        G = nx.Graph()
 
-        pos = (math.cos(float(jfile[0]['Latitude'])) * math.cos(float(jfile[0]['Longitude'])),math.cos(float(jfile[0]['Latitude'])) * math.sin(float(jfile[0]['Longitude'])) , math.sin(float(jfile[0]['Latitude'])) )
-        latLon = (float(jfile[0]['Latitude']),float(jfile[0]['Longitude']))
-        print(pos[0],pos[1])
+        for city in jfile:
+            if(float(city['Population'])>=3000):
+                jfile.remove(city)
+            else: G.add_node(city['City'])
+        
         tree = kdtree(jfile)
-        nodesCloseToAndorra = closeNodes(tree,pos,latLon,10)
-        for node in nodesCloseToAndorra:
-            node.print()
+        
+        for city in jfile:
+            cityPosition = (math.cos(float(city['Latitude'])) * math.cos(float(city['Longitude'])),math.cos(float(city['Latitude'])) * math.sin(float(city['Longitude'])) , math.sin(float(city['Latitude'])) )
+            latLon = (float(jfile[0]['Latitude']),float(jfile[0]['Longitude']))
+            closeByNodes = closeNodes(tree,cityPosition,latLon,200)
+            for closeCity in closeNodes:
+
+
 
 
 
