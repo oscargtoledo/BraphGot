@@ -15,6 +15,7 @@ from operator import itemgetter
 from pprint import pformat
 from haversine import haversine, Unit
 import math
+import time
 
 
 #from fuzzywuzzy import fuzz
@@ -42,8 +43,9 @@ class Tree(object):
 class Node(namedtuple('Node', 'city population location latlon left_child right_child')):
     def __repr__(self):
         return pformat(tuple(self))
-    def print(self):
-        print(self.city + " " + self.population)
+
+
+
 
 appGraph = None
 nodeTree = None
@@ -91,8 +93,9 @@ def closeNodes(root, node, latlon, distance, depth=0):
     outList = []
     k = 3
     axis = depth % k
-    if(root is not None):
-        
+    if(root is None):
+        return outList
+    else:
         if(root.location[axis]<node[axis]):
             outList.extend(closeNodes(root.left_child,node,latlon,distance))
             if(root.location[axis]-node[axis] < distance):
@@ -104,8 +107,6 @@ def closeNodes(root, node, latlon, distance, depth=0):
         else: 
             pass
 
-        #print(root.latlon)
-        #print(latlon)
         if(haversine(root.latlon,latlon)<=distance):
             outList.append(root)
             
@@ -192,24 +193,64 @@ def latLonToCoord(latlon):
 
 #citiesJson = None
 def initGraph(bot, update, args):
+    start = time.time()
+    print("Distance = " + str(args[0]) + " Population = " + str(args[1]))
     with open('worldcitiespop.json', 'r', encoding="utf8") as json_file:
-        appGraph = StaticMap(3000,3000,url_template='http://a.tile.osm.org/{z}/{x}/{y}.png')
+        m = StaticMap(9000,3000,url_template='http://a.tile.osm.org/{z}/{x}/{y}.png')
         #print(sorted(jfile,key=lambda x: float(x['Latitude'])))
         jfile = json.load(json_file)
         #appGraph = nx.Graph()
-
+        other = []
         for city in jfile:
-            print(city['City'])
+            #print(city['City'])
             if(float(city['Population'])>=args[1]):
-                jfile.remove(city)
-            else: 
-                #appGraph.add_node(city['City'])
-                latlon = (float(city['Latitude']),float(city['Longitude']))
-                appGraph.add_marker(CircleMarker((latlon[1],latlon[0]),'#0036FF',6))
-                #tree = kdtree(jfile)
-        image = appGraph.render(zoom=5)
+                #jfile.remove(city)
+                other.append(city)
+
+        done = set()
+
+
+        tree = kdtree(other)
+        appGraph = nx.Graph()
+        t = 0
+        c = 0
+        for city in other:
+            done.add(city['City'])
+            #print(city['City'])
+            #appGraph.add_node(city['City'])
+            latlon = (float(city['Latitude']),float(city['Longitude']))
+            m.add_marker(CircleMarker((latlon[1],latlon[0]),'#0036FF',6))
+            #ns = time.time()
+            nearCities = closeNodes(tree, latLonToCoord(latlon), latlon, args[0])
+            #c = c+1
+            #t = t + time.time()-ns
+            #print("Cities processed: " + str(c) + " Average time taken: " + str(t/c))
+            appGraph.add_node(city['City'])
+            for nearCity in nearCities:
+            #    pass
+                m.add_marker(CircleMarker((nearCity.latlon[1], nearCity.latlon[0]), 'red', 6))
+                m.add_line(Line(((latlon[1], latlon[0]), (nearCity.latlon[1], nearCity.latlon[0])), 'blue', 1))
+                appGraph.add_node(nearCity.city)
+                appGraph.add_edge(city['City'],nearCity.city)
+
+
+        '''print(jfile[0]['City'])
+        # appGraph.add_node(city['City'])
+        latlon = (float(jfile[0]['Latitude']), float(jfile[0]['Longitude']))
+        m.add_marker(CircleMarker((latlon[1],latlon[0]),'#0036FF',6))
+        nearCities = closeNodes(tree, latLonToCoord(latlon), latlon, args[0])
+        appGraph.add_node(city['City'])
+        for nearCity in nearCities:
+            appGraph.add_node(nearCity.city)
+            m.add_marker(CircleMarker((nearCity.latlon[1], nearCity.latlon[0]), '#0036FF', 6))
+            appGraph.add_edge(jfile[0]['City'], nearCity.city)
+            m.add_line(Line(((latlon[1], latlon[0]), (nearCity.latlon[1], nearCity.latlon[0])), 'blue', 3))'''
+
+        end = time.time()
+        print("Finished! Time: " + str(end-start))
+        image = m.render(zoom=5)
         image.save('map.png')
-        nodeTree = kdtree(jfile)
+        #nodeTree = kdtree(jfile)
 
 def plotPop(bot, update, args):
     if(args[2] != None):
@@ -284,7 +325,7 @@ if __name__=="__main__":
     #main()
     #generateJSON.processFile('worldcitiespop')
     #treeTest()
-    initGraph(None,None,[300,1000])
+    initGraph(None,None,[300,100000])
     #jsonTesting()
     #jsonTesting()
 
