@@ -40,10 +40,12 @@ class Tree(object):
 
 
 
+
 class Node(namedtuple('Node', 'city population location latlon left_child right_child')):
     def __repr__(self):
         return pformat(tuple(self))
-
+    
+        
 
 
 
@@ -63,29 +65,56 @@ def kdtree(point_list, depth=0):
     # Sort point list by axis and choose median as pivot element
     #point_list.sort(key=itemgetter(axis))
 
+    if len(point_list)==1:
+        x = math.cos(float(point_list[0]['Latitude'])) * math.cos(float(point_list[0]['Longitude']))
+        y = math.cos(float(point_list[0]['Latitude'])) * math.sin(float(point_list[0]['Longitude']))
+        z = math.sin(float(point_list[0]['Latitude']))
+        return Node(
+            location=(x,y,z),
+            latlon=(float(point_list[0]['Latitude']),float(point_list[0]['Longitude'])),
+            city=point_list[0]['City'],
+            population=point_list[0]['Population'],
+            left_child=kdtree(point_list[:0], depth + 1),
+            right_child=kdtree(point_list[0 + 1:], depth + 1)
+        )
+    else:
+            if(axis==0):
+                point_list.sort(key=lambda x: math.cos(float(x['Latitude'])) * math.cos(float(x['Longitude'])))
+            elif(axis==1):
+                point_list.sort(key=lambda x: math.cos(float(x['Latitude'])) * math.cos(float(x['Longitude'])))
+            else:
+                point_list.sort(key=lambda x: math.sin(float(x['Latitude'])))
+            # Create node and construct subtrees
+            if len(point_list)==2:
+                x = math.cos(float(point_list[0]['Latitude'])) * math.cos(float(point_list[0]['Longitude']))
+                y = math.cos(float(point_list[0]['Latitude'])) * math.sin(float(point_list[0]['Longitude']))
+                z = math.sin(float(point_list[0]['Latitude']))
+                return Node(
+                    location=(x,y,z),
+                    latlon=(float(point_list[0]['Latitude']),float(point_list[0]['Longitude'])),
+                    city=point_list[0]['City'],
+                    population=point_list[0]['Population'],
+                    left_child=kdtree(point_list[1], depth + 1),
+                    right_child=None
+                )
+            else:
+                median = int(len(point_list) // 2)
+
+                x = math.cos(float(point_list[median]['Latitude'])) * math.cos(float(point_list[median]['Longitude']))
+                y = math.cos(float(point_list[median]['Latitude'])) * math.sin(float(point_list[median]['Longitude']))
+                z = math.sin(float(point_list[median]['Latitude']))
+                return Node(
+                    location=(x,y,z),
+                    latlon=(float(point_list[0]['Latitude']),float(point_list[0]['Longitude'])),
+                    city=point_list[0]['City'],
+                    population=point_list[0]['Population'],
+                    left_child=kdtree(point_list[:median], depth + 1),
+                    right_child=kdtree(point_list[median+1:], depth + 1)
+                )
     #x = cos(lat)*cos(lon)
     #y = cos(lat)*sin(lon)
     #z = sin(lat)
-    if(axis==0):
-        point_list.sort(key=lambda x: math.cos(float(x['Latitude'])) * math.cos(float(x['Longitude'])))
-    elif(axis==1):
-        point_list.sort(key=lambda x: math.cos(float(x['Latitude'])) * math.cos(float(x['Longitude'])))
-    else:
-        point_list.sort(key=lambda x: math.sin(float(x['Latitude'])))
-    median = len(point_list) // 2
 
-    x = math.cos(float(point_list[median]['Latitude'])) * math.cos(float(point_list[median]['Longitude']))
-    y = math.cos(float(point_list[median]['Latitude'])) * math.sin(float(point_list[median]['Longitude']))
-    z = math.sin(float(point_list[median]['Latitude']))
-    # Create node and construct subtrees
-    return Node(
-        location=(x,y,z),
-        latlon=(float(point_list[median]['Latitude']),float(point_list[median]['Longitude'])),
-        city=point_list[median]['City'],
-        population=point_list[median]['Population'],
-        left_child=kdtree(point_list[:median], depth + 1),
-        right_child=kdtree(point_list[median + 1:], depth + 1)
-    )
 def dist(pos1,pos2):
     return math.sqrt(math.pow(pos2[0]-pos1[0],2)+math.pow(pos2[1]-pos1[1],2)+math.pow(pos2[2]-pos1[2],2))
 
@@ -102,7 +131,7 @@ def closeNodes(root, node, latlon, distance, depth=0):
                 outList.extend(closeNodes(root.right_child,node,latlon,distance))
         elif(root.location[axis]>node[axis]):
             outList.extend(closeNodes(root.right_child,node,latlon,distance))
-            if(root.location[axis]-node[axis] < distance):
+            if(node[axis] - root.location[axis] < distance):
                 outList.extend(closeNodes(root.left_child,node,latlon,distance))
         else: 
             pass
@@ -185,6 +214,7 @@ def treeTest():
 
         image = m.render(zoom=5)
         image.save('map.png')'''
+
 def latLonToCoord(latlon):
     x = math.cos(float(latlon[0])) * math.cos(float(latlon[1]))
     y = math.cos(float(latlon[0])) * math.sin(float(latlon[1]))
@@ -193,7 +223,6 @@ def latLonToCoord(latlon):
 
 #citiesJson = None
 def initGraph(bot, update, args):
-    start = time.time()
     print("Distance = " + str(args[0]) + " Population = " + str(args[1]))
     with open('worldcitiespop.json', 'r', encoding="utf8") as json_file:
         m = StaticMap(9000,3000,url_template='http://a.tile.osm.org/{z}/{x}/{y}.png')
@@ -207,31 +236,35 @@ def initGraph(bot, update, args):
                 #jfile.remove(city)
                 other.append(city)
 
-        done = set()
+        print(len(other))
 
 
         tree = kdtree(other)
+        #tree.print()
+        print("tree created")
         appGraph = nx.Graph()
         t = 0
         c = 0
-        for city in other:
-            done.add(city['City'])
-            #print(city['City'])
-            #appGraph.add_node(city['City'])
-            latlon = (float(city['Latitude']),float(city['Longitude']))
-            m.add_marker(CircleMarker((latlon[1],latlon[0]),'#0036FF',6))
-            #ns = time.time()
-            nearCities = closeNodes(tree, latLonToCoord(latlon), latlon, args[0])
-            #c = c+1
-            #t = t + time.time()-ns
-            #print("Cities processed: " + str(c) + " Average time taken: " + str(t/c))
-            appGraph.add_node(city['City'])
-            for nearCity in nearCities:
-            #    pass
-                m.add_marker(CircleMarker((nearCity.latlon[1], nearCity.latlon[0]), 'red', 6))
-                m.add_line(Line(((latlon[1], latlon[0]), (nearCity.latlon[1], nearCity.latlon[0])), 'blue', 1))
-                appGraph.add_node(nearCity.city)
-                appGraph.add_edge(city['City'],nearCity.city)
+        start = time.time()
+        # for city in other:
+        #     #print(city['City'])
+        #     #appGraph.add_node(city['City'])
+        #     latlon = (float(city['Latitude']),float(city['Longitude']))
+        #     m.add_marker(CircleMarker((latlon[1],latlon[0]),'#0036FF',6))
+        #     #ns = time.time()
+        #     nearCities = closeNodes(tree, latLonToCoord(latlon), latlon, args[0])
+        #     #c = c+1
+        #     #t = t + time.time()-ns
+        #     #print("Cities processed: " + str(c) + " Average time taken: " + str(t/c))
+        #     appGraph.add_node(city['City'])
+        #     for nearCity in nearCities:
+        #     #    pass
+        #         m.add_marker(CircleMarker((nearCity.latlon[1], nearCity.latlon[0]), 'red', 6))
+        #         m.add_line(Line(((latlon[1], latlon[0]), (nearCity.latlon[1], nearCity.latlon[0])), 'blue', 1))
+        #         appGraph.add_node(nearCity.city)
+        #         appGraph.add_edge(city['City'],nearCity.city)
+
+
 
 
         '''print(jfile[0]['City'])
@@ -251,6 +284,15 @@ def initGraph(bot, update, args):
         image = m.render(zoom=5)
         image.save('map.png')
         #nodeTree = kdtree(jfile)
+def printTree(node,file):
+    f = open(file,'a')
+    if node.left_child != None:
+        f.write(node.city.replace("-","").replace(" ","") + " -> " + node.left_child.city.replace("-","").replace(" ","") + "\n")
+        printTree(node.left_child,file)
+    if node.right_child != None:
+        f.write(node.city.replace("-","").replace(" ","") + " -> " + node.right_child.city.replace("-","").replace(" ","") + "\n")
+        printTree(node.right_child,file)
+
 
 def plotPop(bot, update, args):
     if(args[2] != None):

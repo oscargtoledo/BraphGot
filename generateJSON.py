@@ -1,6 +1,8 @@
 import csv
 import json
-
+import os
+from haversine import haversine, Unit
+import math
 
 
 def processFile(path):
@@ -15,17 +17,18 @@ def processFile(path):
 	#countryDict = {}
 	countryDict = []
 	for row in reader:
+		if len(countryDict)==3000: break;
 		if row['Population'] != "":
 			t = row
 			city = t['Country']
-			t.pop('Country', None)
+			#t.pop('Country', None)
 			t.pop('AccentCity')
 			t.pop('Region')
-			'''if city in countryDict:
-				countryDict[city].append(t)
-			else:
-				countryDict[city] = []
-				countryDict[city].append(t)'''
+			x = math.cos(float(row['Latitude'])) * math.cos(float(row['Longitude']))
+			y = math.cos(float(row['Latitude'])) * math.sin(float(row['Longitude']))
+			z = math.sin(float(row['Latitude']))
+			location = (x,y,z)
+			t['location'] = location
 			countryDict.append(t)
 
 
@@ -42,9 +45,15 @@ def processFile(path):
 
 	#for cityCode in countryDict:
 		#print(countryDict.get(cityCode))
+	jsonfile.write('[')
+	for key in countryDict:
+		json.dump(key,jsonfile)
+		jsonfile.write(",\n")
 
-
-	json.dump(countryDict,jsonfile)
+	jsonfile.seek(jsonfile.tell() - 2, os.SEEK_SET)
+	jsonfile.write('\n')
+	jsonfile.write(']')
+	#json.dump(countryDict,jsonfile)
 
 
 	#jsonfile.write("]\n}")
