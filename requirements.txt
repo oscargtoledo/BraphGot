@@ -1,0 +1,5 @@
+haversine
+staticmap
+fuzzywuzzy
+python-telegram-bot
+networkx
